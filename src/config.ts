@@ -10,11 +10,7 @@ const envSchema = z.object({
   INGEST_TOKEN: z.string().min(1, 'INGEST_TOKEN is required'),
 
   // OpenAI
-  OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY is required'),
-  OPENAI_BASE_URL: z
-    .string()
-    .url('OPENAI_BASE_URL must be a valid URL')
-    .default('https://api.openai.com/v1'),
+  VOICE_API_KEY: z.string().min(1, 'VOICE_API_KEY is required'),
 
   // SMTP
   SMTP_HOST: z.string().min(1, 'SMTP_HOST is required'),

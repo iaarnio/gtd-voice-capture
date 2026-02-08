@@ -3,6 +3,7 @@ import multer, { MulterError } from 'multer';
 import { createRequestLogger } from '../logger';
 import { authMiddleware } from '../middleware/auth';
 import { transcribeAudio, WhisperError } from '../services/whisper';
+import { sendMail, MailError } from '../services/mail';
 
 const router = Router();
 
@@ -74,23 +75,69 @@ router.post('/', authMiddleware, upload.single('file'), async (req: Request, res
       (req.id as string) || 'unknown'
     );
 
-    const duration = Date.now() - startTime;
+    // Transcription successful, now send email
+    try {
+      await sendMail(
+        result.text,
+        {
+          detectedLanguage: result.language,
+          fileName: req.file.originalname,
+          fileSize: req.file.size,
+          timestamp: new Date(),
+        },
+        (req.id as string) || 'unknown'
+      );
 
-    requestLog.info(
-      {
-        component: 'http',
-        statusCode: 200,
-        duration,
-        textLength: result.text.length,
-      },
-      'Request completed'
-    );
+      const duration = Date.now() - startTime;
 
-    res.json({
-      ok: true,
-      text: result.text,
-      language: result.language || 'unknown',
-    });
+      requestLog.info(
+        {
+          component: 'http',
+          statusCode: 200,
+          duration,
+          textLength: result.text.length,
+          emailSent: true,
+        },
+        'Request completed'
+      );
+
+      res.json({
+        ok: true,
+        text: result.text,
+        language: result.language || 'unknown',
+      });
+    } catch (mailError) {
+      const duration = Date.now() - startTime;
+
+      if (mailError instanceof MailError) {
+        requestLog.error(
+          {
+            component: 'mail',
+            error: mailError.code,
+            message: mailError.message,
+            duration,
+          },
+          'Email sending failed'
+        );
+        return res.status(500).json({
+          ok: false,
+          error: 'Failed to send email',
+        });
+      }
+
+      // Unexpected error from mail service
+      requestLog.error(
+        {
+          component: 'mail',
+          error: mailError instanceof Error ? mailError.message : 'unknown',
+        },
+        'Unexpected error sending email'
+      );
+      res.status(500).json({
+        ok: false,
+        error: 'Internal server error',
+      });
+    }
   } catch (error) {
     const duration = Date.now() - startTime;
 

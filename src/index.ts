@@ -2,12 +2,16 @@ import 'dotenv/config';
 import { loadConfig, getConfig } from './config';
 import { logger } from './logger';
 import { createServer } from './server';
+import { initializeMailer } from './services/mail';
 
 async function main() {
   try {
     // Load and validate configuration
     loadConfig();
     const config = getConfig();
+
+    // Initialize mail service
+    initializeMailer();
 
     // Log startup
     logger.info(

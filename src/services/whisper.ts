@@ -54,7 +54,7 @@ export async function transcribeAudio(
     // Call Whisper without specifying language (auto-detect)
     // Whisper supports ~99 languages, including Finnish and English
     const response = await client.audio.transcriptions.create({
-      file: new File([fileBuffer], fileName, { type: 'audio/wav' }),
+      file: new File([fileBuffer], fileName),
       model: 'whisper-1',
       // No language parameter = auto-detect
       // response_format: 'json' (default)

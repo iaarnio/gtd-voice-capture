@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { getConfig } from '../config';
 import { createRequestLogger } from '../logger';
+import { recordAuthFailure } from '../metrics';
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
   const config = getConfig();
@@ -10,6 +11,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     requestLog.warn({ component: 'auth', reason: 'missing_auth_header' }, 'Request rejected: missing or invalid auth header');
+    recordAuthFailure('missing_auth_header');
     return res.status(401).json({ ok: false, error: 'Missing or invalid Authorization header' });
   }
 
@@ -18,6 +20,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
   // Compare to configured token
   if (token !== config.INGEST_TOKEN) {
     requestLog.warn({ component: 'auth', reason: 'invalid_token' }, 'Request rejected: invalid token');
+    recordAuthFailure('invalid_token');
     return res.status(401).json({ ok: false, error: 'Invalid token' });
   }
 

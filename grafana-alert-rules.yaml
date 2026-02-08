@@ -1,0 +1,130 @@
+# Grafana Alert Rules for GTD Voice Capture
+#
+# These rules query Loki logs and trigger alerts based on service behavior.
+# Import these into Grafana Alerting or use with your alerting system.
+
+---
+# Alert: High error rate
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gtd-voice-capture-high-error-rate
+spec:
+  groups:
+    - name: gtd-voice-capture
+      interval: 1m
+      rules:
+        - alert: HighErrorRate
+          expr: |
+            sum(rate({service="gtd-voice-capture", level="error"}[5m])) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "GTD Voice Capture: High error rate"
+            description: "Error rate > 0.1 errors/sec for 5 minutes"
+
+---
+# Alert: Whisper failures spike
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gtd-voice-capture-whisper-errors
+spec:
+  groups:
+    - name: gtd-voice-capture
+      interval: 1m
+      rules:
+        - alert: WhisperFailureSpike
+          expr: |
+            sum(rate({service="gtd-voice-capture", metric="whisper_transcription_error"}[5m])) > 0.05
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "GTD Voice Capture: Whisper failure spike"
+            description: "Whisper errors > 0.05/sec. Check OpenAI API status"
+
+---
+# Alert: Email delivery failures
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gtd-voice-capture-mail-errors
+spec:
+  groups:
+    - name: gtd-voice-capture
+      interval: 1m
+      rules:
+        - alert: MailDeliveryFailure
+          expr: |
+            sum(rate({service="gtd-voice-capture", metric="mail_send_error"}[5m])) > 0.01
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "GTD Voice Capture: Email delivery failure"
+            description: "Mail errors > 0.01/sec. Check SMTP server"
+
+---
+# Alert: Authentication failures
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gtd-voice-capture-auth-failures
+spec:
+  groups:
+    - name: gtd-voice-capture
+      interval: 1m
+      rules:
+        - alert: AuthenticationFailures
+          expr: |
+            sum(rate({service="gtd-voice-capture", metric="auth_failure"}[5m])) > 0.1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "GTD Voice Capture: Unusual authentication failures"
+            description: "Auth failures > 0.1/sec. Check token, possible attacks"
+
+---
+# Alert: Service restart loop
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gtd-voice-capture-restart-loop
+spec:
+  groups:
+    - name: gtd-voice-capture
+      interval: 1m
+      rules:
+        - alert: ServiceRestartLoop
+          expr: |
+            changes({service="gtd-voice-capture", component="bootstrap", msg="Service starting"}[15m]) > 3
+          labels:
+            severity: critical
+          annotations:
+            summary: "GTD Voice Capture: Service restart loop"
+            description: "Service started > 3 times in 15 minutes. Check logs for fatal errors"
+
+---
+# Loki LogQL Alert Rules (for newer Grafana)
+# Use in Grafana Alerting > New alert rule > Loki
+#
+# Rule 1: High error rate
+# {service="gtd-voice-capture", level="error"} | rate(__error__[5m]) > 0.1
+#
+# Rule 2: Whisper failures
+# {service="gtd-voice-capture", metric="whisper_transcription_error"} | rate(__error__[5m]) > 0.05
+#
+# Rule 3: Email failures
+# {service="gtd-voice-capture", metric="mail_send_error"} | rate(__error__[5m]) > 0.01
+#
+# Rule 4: Startup failures
+# {service="gtd-voice-capture", level="fatal"} | rate(__error__[1m]) > 0
+#
+# Rule 5: Request latency
+# {service="gtd-voice-capture", metric="voice_request_success"}
+# | json
+# | duration_ms > 10000
+# | rate(__error__[5m]) > 0.01

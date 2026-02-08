@@ -4,6 +4,13 @@ import { createRequestLogger } from '../logger';
 import { authMiddleware } from '../middleware/auth';
 import { transcribeAudio, WhisperError } from '../services/whisper';
 import { sendMail, MailError } from '../services/mail';
+import {
+  recordRequestSuccess,
+  recordRequestError,
+  recordValidationFailure,
+  recordMailError,
+  recordWhisperError,
+} from '../metrics';
 
 const router = Router();
 
@@ -55,6 +62,7 @@ router.post('/', authMiddleware, upload.single('file'), async (req: Request, res
       { component: 'http', reason: 'missing_file' },
       'Request rejected: no audio file'
     );
+    recordValidationFailure('missing_file');
     return res.status(400).json({ ok: false, error: 'No audio file provided' });
   }
 
@@ -64,6 +72,7 @@ router.post('/', authMiddleware, upload.single('file'), async (req: Request, res
       { component: 'http', reason: 'empty_file' },
       'Request rejected: empty audio file'
     );
+    recordValidationFailure('empty_file');
     return res.status(400).json({ ok: false, error: 'Audio file is empty' });
   }
 
@@ -101,6 +110,9 @@ router.post('/', authMiddleware, upload.single('file'), async (req: Request, res
         'Request completed'
       );
 
+      // Record success metric
+      recordRequestSuccess(duration, result.language);
+
       res.json({
         ok: true,
         text: result.text,
@@ -119,6 +131,7 @@ router.post('/', authMiddleware, upload.single('file'), async (req: Request, res
           },
           'Email sending failed'
         );
+        recordMailError(mailError.code, duration);
         return res.status(500).json({
           ok: false,
           error: 'Failed to send email',
@@ -151,6 +164,7 @@ router.post('/', authMiddleware, upload.single('file'), async (req: Request, res
         },
         'Whisper transcription failed'
       );
+      recordWhisperError(error.code, duration);
       return res.status(500).json({
         ok: false,
         error: 'Failed to transcribe audio',

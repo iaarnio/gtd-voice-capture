@@ -93,6 +93,8 @@ router.post('/', authMiddleware, upload.single('file'), async (req: Request, res
           fileName: req.file.originalname,
           fileSize: req.file.size,
           timestamp: new Date(),
+          audioBuffer: req.file.buffer,
+          audioMimeType: req.file.mimetype,
         },
         (req.id as string) || 'unknown'
       );

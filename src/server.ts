@@ -39,6 +39,9 @@ export function createServer() {
 
   // Health endpoint - minimal liveness check
   app.get('/health', (req: Request, res: Response) => {
+    if (isShuttingDown) {
+      return res.status(503).json({ ok: false, shuttingDown: true });
+    }
     res.json({ ok: true });
   });
 

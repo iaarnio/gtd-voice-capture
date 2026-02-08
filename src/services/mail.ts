@@ -8,6 +8,8 @@ export interface MailMetadata {
   fileSize?: number;
   transcriptionTime?: number;
   timestamp?: Date;
+  audioBuffer?: Buffer;
+  audioMimeType?: string;
 }
 
 export class MailError extends Error {
@@ -94,6 +96,13 @@ Language: ${language}${metadata.fileName ? `\nFilename: ${metadata.fileName}` : 
       to: config.MAIL_TO,
       subject,
       text: body,
+      attachments: metadata.audioBuffer && metadata.fileName ? [
+        {
+          filename: metadata.fileName,
+          content: metadata.audioBuffer,
+          contentType: metadata.audioMimeType || 'audio/m4a',
+        },
+      ] : [],
     });
 
     const duration = Date.now() - startTime;

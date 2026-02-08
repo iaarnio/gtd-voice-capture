@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { loadConfig, getConfig } from './config';
 import { logger } from './logger';
-import { createServer } from './server';
+import { createServer, setShuttingDown } from './server';
 import { initializeMailer } from './services/mail';
 
 async function main() {
@@ -31,27 +31,45 @@ async function main() {
         {
           component: 'bootstrap',
           port: config.PORT,
+          env: config.NODE_ENV,
+          version: config.SERVICE_VERSION,
         },
         'Server listening'
       );
     });
 
-    // Graceful shutdown
-    process.on('SIGTERM', () => {
-      logger.info({ component: 'bootstrap' }, 'SIGTERM received, shutting down gracefully');
-      server.close(() => {
-        logger.info({ component: 'bootstrap' }, 'Server closed');
-        process.exit(0);
-      });
-    });
+    // Graceful shutdown handler
+    const handleShutdown = (signal: string) => {
+      logger.info(
+        {
+          component: 'bootstrap',
+          signal,
+        },
+        'Shutdown signal received, rejecting new requests'
+      );
 
-    process.on('SIGINT', () => {
-      logger.info({ component: 'bootstrap' }, 'SIGINT received, shutting down gracefully');
+      // Stop accepting new requests
+      setShuttingDown(true);
+
+      // Give in-flight requests time to complete (30 seconds)
+      const shutdownTimeout = setTimeout(() => {
+        logger.warn(
+          { component: 'bootstrap' },
+          'Shutdown timeout reached, force closing'
+        );
+        process.exit(1);
+      }, 30000);
+
+      // Close server and wait for connections to drain
       server.close(() => {
-        logger.info({ component: 'bootstrap' }, 'Server closed');
+        clearTimeout(shutdownTimeout);
+        logger.info({ component: 'bootstrap' }, 'Server closed gracefully');
         process.exit(0);
       });
-    });
+    };
+
+    process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+    process.on('SIGINT', () => handleShutdown('SIGINT'));
   } catch (error) {
     logger.fatal({ error }, 'Failed to start service');
     process.exit(1);

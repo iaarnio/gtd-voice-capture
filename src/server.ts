@@ -5,12 +5,29 @@ import { getConfig } from './config';
 import { v4 as uuidv4 } from 'uuid';
 import voiceRouter from './routes/voice';
 
+// Graceful shutdown state
+let isShuttingDown = false;
+
+export function setShuttingDown(state: boolean) {
+  isShuttingDown = state;
+}
+
 export function createServer() {
   const app = express();
   const config = getConfig();
 
   // Middleware
   app.use(httpLogger);
+
+  // Graceful shutdown middleware - reject new requests during shutdown
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (isShuttingDown && req.path !== '/health') {
+      const requestLog = createRequestLogger((req.id as string) || 'unknown');
+      requestLog.warn({ component: 'http' }, 'Request rejected: service shutting down');
+      return res.status(503).json({ ok: false, error: 'Service is shutting down' });
+    }
+    next();
+  });
 
   // RequestId middleware (if not already set by pino-http)
   app.use((req: Request, res: Response, next: NextFunction) => {

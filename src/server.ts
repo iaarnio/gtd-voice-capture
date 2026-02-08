@@ -49,6 +49,7 @@ export function createServer() {
     // Validate critical config
     const ready = !!(
       config.OPENAI_API_KEY &&
+      config.OPENAI_BASE_URL &&
       config.SMTP_HOST &&
       config.SMTP_USER &&
       config.SMTP_PASS &&

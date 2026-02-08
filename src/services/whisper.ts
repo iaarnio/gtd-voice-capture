@@ -37,6 +37,7 @@ export async function transcribeAudio(
 
   const client = new OpenAI({
     apiKey: config.OPENAI_API_KEY,
+    baseURL: config.OPENAI_BASE_URL,
     timeout: WHISPER_TIMEOUT,
   });
 

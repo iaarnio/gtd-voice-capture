@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  gtd-voice-capture:
+    image: gtd-voice-capture:latest
+    container_name: gtd-voice-capture
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      LOG_LEVEL: info
+      SERVICE_VERSION: ${SERVICE_VERSION:-latest}
+
+      # Authentication
+      INGEST_TOKEN: ${INGEST_TOKEN}
+
+      # OpenAI
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+      # SMTP
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      MAIL_FROM: ${MAIL_FROM}
+      MAIL_TO: ${MAIL_TO}
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+    # Optional: add to existing networks
+    # networks:
+    #   - your_network
+
+    # Optional: add logging driver for Loki
+    # logging:
+    #   driver: loki
+    #   options:
+    #     loki-url: http://loki:3100/loki/api/v1/push
+    #     loki-external-labels: service=gtd-voice-capture
+
+# If you have a network defined:
+# networks:
+#   your_network:
+#     external: true
